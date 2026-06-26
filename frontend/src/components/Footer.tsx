@@ -62,7 +62,7 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-border mt-6 xl:mt-8 2xl:mt-10 pt-4 xl:pt-6 2xl:pt-8 text-center">
-          <p className="text-xs xl:text-sm 2xl:text-base opacity-60">© {new Date().getFullYear()} ABHYY'S FOOD LTD. All rights reserved | Powered by CSD</p>
+          <p className="text-xs xl:text-sm 2xl:text-base opacity-60">© {new Date().getFullYear()} ABHYY'S FOOD LTD. All rights reserved | Powered by Calgary Software Developers</p>
         </div>
       </div>
     </footer>
