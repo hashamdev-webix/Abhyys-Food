@@ -23,11 +23,55 @@ const GetAQuotePage = () => {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+
+  // Phone validation function
+  const validatePhone = (phone: string) => {
+    // Remove all non-digit characters to count actual digits
+    const digitsOnly = phone.replace(/\D/g, "");
+
+    if (digitsOnly.length < 10) {
+      return "Phone number must be at least 10 digits";
+    }
+    if (digitsOnly.length > 15) {
+      return "Phone number must not exceed 15 digits";
+    }
+
+    // Check if contains only valid characters: digits, spaces, +, -, ()
+    const validPattern = /^[\d\s+\-()]+$/;
+    if (!validPattern.test(phone)) {
+      return "Phone number can only contain numbers, spaces, +, -, ()";
+    }
+
+    return ""; // Valid
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setForm({ ...form, phone: value });
+
+    // Validate phone in real-time
+    if (value) {
+      const error = validatePhone(value);
+      setPhoneError(error);
+    } else {
+      setPhoneError("");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    // Final phone validation before submit
+    const phoneValidationError = validatePhone(form.phone);
+    if (phoneValidationError) {
+      setPhoneError(phoneValidationError);
+      setError("Please correct the phone number before submitting.");
+      setLoading(false);
+      return;
+    }
 
     try {
       // Add document to Firestore
@@ -157,12 +201,24 @@ const GetAQuotePage = () => {
                         type="tel"
                         required
                         value={form.phone}
-                        onChange={(e) =>
-                          setForm({ ...form, phone: e.target.value })
-                        }
-                        className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                        onChange={handlePhoneChange}
+                        className={`w-full px-4 py-3 border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 ${
+                          phoneError
+                            ? "border-red-500 focus:ring-red-500"
+                            : "border-border focus:ring-primary"
+                        }`}
                         placeholder="+1 403-836-3512"
+                        minLength={10}
                       />
+                      {phoneError && (
+                        <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                          <span>⚠️</span>
+                          <span>{phoneError}</span>
+                        </p>
+                      )}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Enter at least 10 digits (e.g., +1 403-836-3512)
+                      </p>
                     </div>
                     <div>
                       <label className="block text-foreground font-medium mb-2">
