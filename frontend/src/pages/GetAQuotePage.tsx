@@ -2,6 +2,9 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { FiCheckCircle, FiPhone, FiMail, FiMapPin } from "react-icons/fi";
 import HeroBanner from "@/components/HeroBanner";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import emailjs from "@emailjs/browser";
 
 const trustPoints = [
   "Customized solutions based on your needs",
@@ -11,68 +14,202 @@ const trustPoints = [
 ];
 
 const GetAQuotePage = () => {
-  const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    message: "",
+  });
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setForm({ name: "", email: "", phone: "", message: "" });
+    setLoading(true);
+    setError("");
+
+    try {
+      // Add document to Firestore
+      await addDoc(collection(db, "quote-requests"), {
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        message: form.message,
+        timestamp: serverTimestamp(),
+        status: "pending",
+      });
+
+      // Send email using EmailJS
+      const emailParams = {
+        to_name: form.name,
+        to_email: form.email,
+        from_name: "Abhyy's Food",
+        customer_name: form.name,
+        customer_email: form.email,
+        customer_phone: form.phone,
+        customer_message: form.message,
+        reply_to: form.email,
+      };
+
+      // Send confirmation email to customer
+      await emailjs.send(
+        import.meta.env.VITE_EMAILJS_SERVICE_ID,
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+        emailParams,
+        import.meta.env.VITE_EMAILJS_PUBLIC_KEY,
+      );
+
+      console.log("Email sent successfully!");
+      setSubmitted(true);
+      setForm({ name: "", email: "", phone: "", message: "" });
+    } catch (err) {
+      console.error("Error submitting form:", err);
+      setError(
+        "Failed to submit your request. Please try again or contact us directly.",
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <>
-      <HeroBanner image="/images/hero-home.jpg" title="Get a Quote" subtitle="Tell us your requirements and we'll get back to you with a tailored quote." />
+      <HeroBanner
+        image="/images/hero-home.jpg"
+        title="Get a Quote"
+        subtitle="Tell us your requirements and we'll get back to you with a tailored quote."
+      />
 
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Form */}
-            <motion.div initial={{ opacity: 0, x: -40 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+            <motion.div
+              initial={{ opacity: 0, x: -40 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
               {submitted ? (
                 <div className="bg-muted p-8 rounded-xl text-center">
-                  <FiCheckCircle className="text-primary mx-auto mb-4" size={48} />
-                  <h3 className="text-2xl font-bold text-foreground mb-2">Thank You!</h3>
-                  <p className="text-muted-foreground">We've received your request and will get back to you shortly.</p>
-                  <button onClick={() => setSubmitted(false)} className="mt-4 text-primary font-semibold hover:underline">Submit Another Request</button>
+                  <FiCheckCircle
+                    className="text-primary mx-auto mb-4"
+                    size={48}
+                  />
+                  <h3 className="text-2xl font-bold text-foreground mb-2">
+                    Thank You!
+                  </h3>
+                  <p className="text-muted-foreground">
+                    We've received your request and will get back to you
+                    shortly.
+                  </p>
+                  <button
+                    onClick={() => setSubmitted(false)}
+                    className="mt-4 text-primary font-semibold hover:underline"
+                  >
+                    Submit Another Request
+                  </button>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div>
-                    <label className="block text-foreground font-medium mb-2">Full Name</label>
-                    <input type="text" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Your full name" />
-                  </div>
-                  <div>
-                    <label className="block text-foreground font-medium mb-2">Email Address</label>
-                    <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-                      className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary" placeholder="your@email.com" />
-                  </div>
-                  <div>
-                    <label className="block text-foreground font-medium mb-2">Phone Number</label>
-                    <input type="tel" required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary" placeholder="+1 403-836-3512" />
-                  </div>
-                  <div>
-                    <label className="block text-foreground font-medium mb-2">Message</label>
-                    <textarea required rows={5} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })}
-                      className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none" placeholder="Tell us about your requirements..." />
-                  </div>
-                  <button type="submit" className="w-full bg-primary text-primary-foreground py-3 rounded-lg font-semibold text-lg hover:opacity-90 transition-opacity">
-                    SUBMIT
-                  </button>
-                </form>
+                <>
+                  {error && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                      {error}
+                    </div>
+                  )}
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div>
+                      <label className="block text-foreground font-medium mb-2">
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={form.name}
+                        onChange={(e) =>
+                          setForm({ ...form, name: e.target.value })
+                        }
+                        className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="Your full name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-foreground font-medium mb-2">
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={form.email}
+                        onChange={(e) =>
+                          setForm({ ...form, email: e.target.value })
+                        }
+                        className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="your@email.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-foreground font-medium mb-2">
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        value={form.phone}
+                        onChange={(e) =>
+                          setForm({ ...form, phone: e.target.value })
+                        }
+                        className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="+1 403-836-3512"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-foreground font-medium mb-2">
+                        Message
+                      </label>
+                      <textarea
+                        required
+                        rows={5}
+                        value={form.message}
+                        onChange={(e) =>
+                          setForm({ ...form, message: e.target.value })
+                        }
+                        className="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                        placeholder="Tell us about your requirements..."
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-primary text-primary-foreground py-3 rounded-lg font-semibold text-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? "SUBMITTING..." : "SUBMIT"}
+                    </button>
+                  </form>
+                </>
               )}
             </motion.div>
 
             {/* Info */}
-            <motion.div initial={{ opacity: 0, x: 40 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} className="space-y-8">
+            <motion.div
+              initial={{ opacity: 0, x: 40 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="space-y-8"
+            >
               <div>
-                <h3 className="text-2xl font-bold text-foreground mb-4">Why Request a Quote?</h3>
+                <h3 className="text-2xl font-bold text-foreground mb-4">
+                  Why Request a Quote?
+                </h3>
                 <div className="space-y-3">
                   {trustPoints.map((point) => (
                     <div key={point} className="flex items-start gap-3">
-                      <FiCheckCircle className="text-primary mt-1 flex-shrink-0" size={20} />
+                      <FiCheckCircle
+                        className="text-primary mt-1 flex-shrink-0"
+                        size={20}
+                      />
                       <span className="text-muted-foreground">{point}</span>
                     </div>
                   ))}
@@ -80,7 +217,9 @@ const GetAQuotePage = () => {
               </div>
 
               <div className="bg-muted p-6 rounded-xl">
-                <h3 className="text-xl font-bold text-foreground mb-4">Contact Details</h3>
+                <h3 className="text-xl font-bold text-foreground mb-4">
+                  Contact Details
+                </h3>
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
                     <FiPhone className="text-primary" size={20} />
@@ -88,18 +227,32 @@ const GetAQuotePage = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     <FiMail className="text-primary" size={20} />
-                    <span className="text-foreground">info@abhyysfoods.com</span>
+                    <span className="text-foreground">
+                      info@abhyysfoods.com
+                    </span>
                   </div>
                   <div className="flex items-center gap-3">
                     <FiMapPin className="text-primary" size={20} />
-                    <span className="text-foreground">8500 84 ST SE, Calgary, Alberta, Canada T3S 0A1</span>
+                    <span className="text-foreground">
+                      8500 84 ST SE, Calgary, Alberta, Canada T3S 0A1
+                    </span>
                   </div>
                 </div>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4">
-                <a href="tel:+14038363512" className="flex-1 bg-secondary text-secondary-foreground py-3 rounded-lg font-semibold text-center hover:opacity-90 transition-opacity cursor-pointer">CALL NOW</a>
-                <a href="mailto:info@abhyysfoods.com" className="flex-1 bg-primary text-primary-foreground py-3 rounded-lg font-semibold text-center hover:opacity-90 transition-opacity cursor-pointer">EMAIL US</a>
+                <a
+                  href="tel:+14038363512"
+                  className="flex-1 bg-secondary text-secondary-foreground py-3 rounded-lg font-semibold text-center hover:opacity-90 transition-opacity cursor-pointer"
+                >
+                  CALL NOW
+                </a>
+                <a
+                  href="mailto:info@abhyysfoods.com"
+                  className="flex-1 bg-primary text-primary-foreground py-3 rounded-lg font-semibold text-center hover:opacity-90 transition-opacity cursor-pointer"
+                >
+                  EMAIL US
+                </a>
               </div>
             </motion.div>
           </div>
